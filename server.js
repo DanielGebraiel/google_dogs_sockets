@@ -5,6 +5,9 @@ const { Pool } = require("pg");
 const CRDT = require("./crdt"); // Import the CRDT class
 
 const app = express();
+
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
 const io = new Server(server);
 
@@ -51,6 +54,6 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(3000, () => {
-  console.log("Server running on port 3000");
+server.listen(process.env.PORT || 3000, () => {
+  console.log(`Server running on port ${process.env.PORT || 3000}`);
 });
