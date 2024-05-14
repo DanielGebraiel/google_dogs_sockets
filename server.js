@@ -43,6 +43,8 @@ io.on("connection", (socket) => {
   socket.on(
     "insert",
     (docId, char, uniqueId, fractionalId, isBold, isItalic) => {
+      uniqueId = parseFloat(uniqueId);
+      fractionalId = parseFloat(fractionalId);
       console.log(char);
       console.log(uniqueId);
       console.log(fractionalId);
@@ -55,10 +57,22 @@ io.on("connection", (socket) => {
     }
   );
 
-  socket.on("delete", (docId, uniqueId, fractionalId) => {
-    crdt.delete(uniqueId, fractionalId); // Use CRDT to handle deletions
-    socket.to(docId).emit("delete", uniqueId, fractionalId); // Broadcast deletions to clients in the same room
-  });
+  socket.on(
+    "delete",
+    (docId, char, uniqueId, fractionalId, isBold, isItalic) => {
+      uniqueId = parseFloat(uniqueId);
+      fractionalId = parseFloat(fractionalId);
+      console.log(char);
+      console.log(uniqueId);
+      console.log(fractionalId);
+      console.log(isBold);
+      console.log(isItalic);
+      crdt.delete(uniqueId, fractionalId);
+      socket
+        .to(docId)
+        .emit("delete", char, uniqueId, fractionalId, isBold, isItalic); // Broadcast insertions to clients in the same room
+    }
+  );
 });
 
 server.listen(3000, () => {
