@@ -62,6 +62,7 @@ class CRDT {
     }
     return low;
   }
+
 }
 
 module.exports = CRDT;
