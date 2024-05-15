@@ -17,8 +17,8 @@ class CRDT {
   }
 
   delete(uniqueId, fractionalId) {
-    const index = this.findIndex(fractionalId, uniqueId);
-    if (index >= 0 && this.chars[index].uniqueId === uniqueId) {
+    const index = this.chars.findIndex((char) => char.uniqueId === uniqueId);
+    if (index !== -1) {
       this.chars.splice(index, 1);
     }
   }
