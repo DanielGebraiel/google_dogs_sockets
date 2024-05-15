@@ -17,7 +17,26 @@ const pool = new Pool({
   ssl: true, // Enable SSL for Azure PostgreSQL
 });
 
-const crdt = new CRDT(); // Create a new instance of the CRDT class
+async function saveToDb(docId, updatedNodes) {
+  // Convert updatedNodes to a format suitable for your database
+  const updatedNodesString = JSON.stringify(updatedNodes);
+
+  try {
+    // Update the document in the database
+    // console.log(updatedNodesString);
+    console.log(docId);
+    // console.log(BigInt(docId));
+    const res = await pool.query(
+      "UPDATE document SET content = $1 WHERE doc_id = $2",
+      [updatedNodesString, docId]
+    );
+    console.log("Document updated successfully");
+  } catch (err) {
+    console.error("Error updating document", err);
+  }
+}
+
+const crdtLists = {};
 
 // Test PostgreSQL connection
 pool.query("SELECT NOW()", (err, res) => {
@@ -33,7 +52,45 @@ io.on("connection", (socket) => {
 
   socket.on("join", (docId) => {
     socket.join(docId);
+    if (
+      crdtLists[docId] !== undefined &&
+      crdtLists[docId].chars !== undefined &&
+      crdtLists[docId].chars !== null &&
+      crdtLists[docId].chars &&
+      crdtLists[docId].chars.length > 0
+    ) {
+      console.log(`User joined room but i have crdt: `);
+      console.log(crdtLists[docId].chars);
+      console.log(crdtLists);
+      socket.emit("document", crdtLists[docId].chars);
+      return;
+    }
     console.log(`User joined room: ${docId}`);
+    pool.query(
+      "SELECT content FROM document WHERE doc_id = $1",
+      [docId],
+      (err, res) => {
+        if (err) {
+          console.error(`Error fetching document: ${err}`);
+        } else if (res.rows[0]) {
+          // Emit an event to the client with the document content
+          console.log("I WANT CRYYYYY");
+          if (res.rows[0].content == null) {
+            crdtLists[docId] = new CRDT();
+            crdtLists[docId].insert("", 0, 0, false, false);
+            crdtLists[docId].insert("", 1, 100000, false, false);
+            saveToDb(docId, crdtLists[docId].chars);
+            socket.emit("document", crdtLists[docId].chars);
+            console.log("Emitting content to client: ", crdtLists[docId].chars);
+          } else {
+            console.log("BWAHAHAHHAHAHHAHAH");
+            crdtLists[docId] = new CRDT(res.rows[0].content);
+            socket.emit("document", res.rows[0].content);
+            console.log("Emitting content to client: ", res.rows[0].content);
+          }
+        }
+      }
+    );
   });
 
   socket.on("disconnect", () => {
@@ -43,6 +100,7 @@ io.on("connection", (socket) => {
   socket.on(
     "insert",
     (docId, char, uniqueId, fractionalId, isBold, isItalic) => {
+      console.log(crdtLists[docId]);
       uniqueId = parseFloat(uniqueId);
       fractionalId = parseFloat(fractionalId);
       console.log(char);
@@ -50,10 +108,11 @@ io.on("connection", (socket) => {
       console.log(fractionalId);
       console.log(isBold);
       console.log(isItalic);
-      crdt.insert(char, uniqueId, fractionalId, isBold, isItalic);
+      crdtLists[docId].insert(char, uniqueId, fractionalId, isBold, isItalic);
       socket
         .to(docId)
-        .emit("insert", char, uniqueId, fractionalId, isBold, isItalic); // Broadcast insertions to clients in the same room
+        .emit("insert", char, uniqueId, fractionalId, isBold, isItalic);
+      saveToDb(docId, crdtLists[docId].chars);
     }
   );
 
@@ -67,12 +126,38 @@ io.on("connection", (socket) => {
       console.log(fractionalId);
       console.log(isBold);
       console.log(isItalic);
-      crdt.delete(uniqueId, fractionalId);
+      crdtLists[docId].delete(uniqueId, fractionalId);
       socket
         .to(docId)
-        .emit("delete", char, uniqueId, fractionalId, isBold, isItalic); // Broadcast insertions to clients in the same room
+        .emit("delete", char, uniqueId, fractionalId, isBold, isItalic);
+      saveToDb(docId, crdtLists[docId].chars); // Broadcast insertions to clients in the same room
     }
   );
+
+  socket.on("update", (docId, updateType, updatedNodes) => {
+    console.log(updateType);
+    updatedNodes.forEach(({ uniqueId }) => {
+      switch (updateType) {
+        case "bold":
+          crdtLists[docId].bold(uniqueId);
+          break;
+        case "unbold":
+          crdtLists[docId].unbold(uniqueId);
+          break;
+        case "italic":
+          crdtLists[docId].italic(uniqueId);
+          break;
+        case "unitalic":
+          crdtLists[docId].unitalic(uniqueId);
+          break;
+        default:
+          console.error(`Invalid update type: ${updateType}`);
+      }
+    });
+    // Broadcast the updates to other clients in the same room
+    socket.to(docId).emit("update", updateType, updatedNodes);
+    saveToDb(docId, crdtLists[docId].chars);
+  });
 });
 
 server.listen(3000, () => {
