@@ -75,6 +75,7 @@ io.on("connection", (socket) => {
   );
 
   socket.on("update", (docId, updateType, updatedNodes) => {
+    console.log(updateType);
     updatedNodes.forEach(({ uniqueId }) => {
       switch (updateType) {
         case "bold":
