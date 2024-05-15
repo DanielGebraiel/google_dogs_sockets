@@ -52,6 +52,19 @@ io.on("connection", (socket) => {
 
   socket.on("join", (docId) => {
     socket.join(docId);
+    if (
+      crdtLists[docId] !== undefined &&
+      crdtLists[docId].chars !== undefined &&
+      crdtLists[docId].chars !== null &&
+      crdtLists[docId].chars &&
+      crdtLists[docId].chars.length > 0
+    ) {
+      console.log(`User joined room but i have crdt: `);
+      console.log(crdtLists[docId].chars);
+      console.log(crdtLists);
+      socket.emit("document", crdtLists[docId].chars);
+      return;
+    }
     console.log(`User joined room: ${docId}`);
     pool.query(
       "SELECT content FROM document WHERE doc_id = $1",
@@ -61,6 +74,7 @@ io.on("connection", (socket) => {
           console.error(`Error fetching document: ${err}`);
         } else if (res.rows[0]) {
           // Emit an event to the client with the document content
+          console.log("I WANT CRYYYYY");
           if (res.rows[0].content == null) {
             crdtLists[docId] = new CRDT();
             crdtLists[docId].insert("", 0, 0, false, false);
@@ -69,6 +83,8 @@ io.on("connection", (socket) => {
             socket.emit("document", crdtLists[docId].chars);
             console.log("Emitting content to client: ", crdtLists[docId].chars);
           } else {
+            console.log("BWAHAHAHHAHAHHAHAH");
+            crdtLists[docId] = new CRDT(res.rows[0].content);
             socket.emit("document", res.rows[0].content);
             console.log("Emitting content to client: ", res.rows[0].content);
           }
@@ -84,6 +100,7 @@ io.on("connection", (socket) => {
   socket.on(
     "insert",
     (docId, char, uniqueId, fractionalId, isBold, isItalic) => {
+      console.log(crdtLists[docId]);
       uniqueId = parseFloat(uniqueId);
       fractionalId = parseFloat(fractionalId);
       console.log(char);
@@ -95,7 +112,7 @@ io.on("connection", (socket) => {
       socket
         .to(docId)
         .emit("insert", char, uniqueId, fractionalId, isBold, isItalic);
-      saveToDb(docId, crdtLists[docId].chars); // Broadcast insertions to clients in the same room
+      saveToDb(docId, crdtLists[docId].chars);
     }
   );
 
@@ -139,6 +156,7 @@ io.on("connection", (socket) => {
     });
     // Broadcast the updates to other clients in the same room
     socket.to(docId).emit("update", updateType, updatedNodes);
+    saveToDb(docId, crdtLists[docId].chars);
   });
 });
 
