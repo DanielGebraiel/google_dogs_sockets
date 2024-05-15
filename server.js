@@ -34,15 +34,19 @@ io.on("connection", (socket) => {
   socket.on("join", (docId) => {
     socket.join(docId);
     console.log(`User joined room: ${docId}`);
-    pool.query("SELECT content FROM document WHERE doc_id = $1", [docId], (err, res) => {
-      if (err) {
-        console.error(`Error fetching document: ${err}`);
-      } else if (res.rows[0]) {
-        // Emit an event to the client with the document content
-        console.log("Emitting content to client: ", res.rows[0].content);
-        socket.emit('document', res.rows[0].content);
+    pool.query(
+      "SELECT content FROM document WHERE doc_id = $1",
+      [docId],
+      (err, res) => {
+        if (err) {
+          console.error(`Error fetching document: ${err}`);
+        } else if (res.rows[0]) {
+          // Emit an event to the client with the document content
+          console.log("Emitting content to client: ", res.rows[0].content);
+          socket.emit("document", res.rows[0].content);
+        }
       }
-    });
+    );
   });
 
   socket.on("disconnect", () => {
