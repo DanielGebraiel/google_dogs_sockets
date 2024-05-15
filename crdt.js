@@ -23,6 +23,34 @@ class CRDT {
     }
   }
 
+  bold(uniqueId) {
+    const index = this.chars.findIndex((char) => char.uniqueId === uniqueId);
+    if (index !== -1) {
+      this.chars[index].isBold = true;
+    }
+  }
+
+  unbold(uniqueId) {
+    const index = this.chars.findIndex((char) => char.uniqueId === uniqueId);
+    if (index !== -1) {
+      this.chars[index].isBold = false;
+    }
+  }
+
+  italic(uniqueId) {
+    const index = this.chars.findIndex((char) => char.uniqueId === uniqueId);
+    if (index !== -1) {
+      this.chars[index].isItalic = true;
+    }
+  }
+
+  unitalic(uniqueId) {
+    const index = this.chars.findIndex((char) => char.uniqueId === uniqueId);
+    if (index !== -1) {
+      this.chars[index].isItalic = false;
+    }
+  }
+
   findIndex(fractionalId) {
     let low = 0;
     let high = this.chars.length - 1;

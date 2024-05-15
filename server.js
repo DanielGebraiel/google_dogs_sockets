@@ -73,6 +73,30 @@ io.on("connection", (socket) => {
         .emit("delete", char, uniqueId, fractionalId, isBold, isItalic); // Broadcast insertions to clients in the same room
     }
   );
+
+  socket.on("update", (docId, updateType, updatedNodes) => {
+    updatedNodes.forEach(({ uniqueId }) => {
+      switch (updateType) {
+        case "bold":
+          crdt.bold(uniqueId);
+          break;
+        case "unbold":
+          crdt.unbold(uniqueId);
+          break;
+        case "italic":
+          crdt.italic(uniqueId);
+          break;
+        case "unitalic":
+          crdt.unitalic(uniqueId);
+          break;
+        default:
+          console.error(`Invalid update type: ${updateType}`);
+      }
+    });
+
+    // Broadcast the updates to other clients in the same room
+    socket.to(docId).emit("update", updateType, updatedNodes);
+  });
 });
 
 server.listen(3000, () => {
